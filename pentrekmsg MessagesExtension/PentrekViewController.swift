@@ -32,8 +32,8 @@ extension PentrekViewController: PentrekViewDelegate
     
     func pentrekView(_ view: PentrekView, didReceiveTouchEvent event: PentrekTouchEvent)
     {
-        switch event
-        {
+        return;
+        switch event {
         case .down(location: let location):
             view.label.text = "Touched down at: (\(Int(location.x)),\(Int(location.y)))"
             
