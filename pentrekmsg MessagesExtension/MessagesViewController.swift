@@ -21,6 +21,7 @@ class MessagesViewController: MSMessagesAppViewController
         // This will happen when the extension is about to present UI.
         // Use this method to configure the extension and restore previously stored state.
         
+        requestPresentationStyle(.expanded)
         presentTouchTrackingView()
     }
     
@@ -56,6 +57,8 @@ class MessagesViewController: MSMessagesAppViewController
         {
             print("Error creating sticker: \(error.localizedDescription)")
         }
+        
+        dismiss()
     }
     
     // MARK: - Conversation Handling

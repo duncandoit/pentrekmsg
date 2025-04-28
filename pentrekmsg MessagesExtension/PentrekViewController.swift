@@ -35,16 +35,13 @@ extension PentrekViewController: PentrekViewDelegate
         switch event
         {
         case .down(location: let location):
-            print("Touched down at: \(location)")
-            view.label.text = "Touch location: \(location)"
+            view.label.text = "Touched down at: (\(Int(location.x)),\(Int(location.y)))"
             
         case .moved(location: let location):
-            print("Touch moved to: \(location)")
-            view.label.text = "Touch location: \(location)"
+            view.label.text = "Touch moved to: (\(Int(location.x)),\(Int(location.y)))"
             
         case .up(location: let location):
-            print("Touch lifted up at: \(location)")
-            view.label.text = "Touch location: \(location)"
+            view.label.text = "Touch lifted up at (\(Int(location.x)),\(Int(location.y)))"
         }
     }
 }

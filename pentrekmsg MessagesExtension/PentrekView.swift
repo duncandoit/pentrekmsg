@@ -45,7 +45,7 @@ class PentrekView: UIView
     {
         button.setTitle("Send as Sticker", for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.addTarget(self, action: #selector(sendAsSticker), for: .touchUpInside)
+        button.addTarget(self, action: #selector(handleRequestSticker), for: .touchUpInside)
         addSubview(button)
 
         NSLayoutConstraint.activate([
@@ -54,7 +54,7 @@ class PentrekView: UIView
         ])
     }
     
-    @objc private func sendAsSticker()
+    @objc private func handleRequestSticker()
     {
         let renderer = UIGraphicsImageRenderer(bounds: bounds)
         let image = renderer.image { ctx in
@@ -91,6 +91,28 @@ class PentrekView: UIView
     {
         guard let viewDelegate else { return }
         viewDelegate.pentrekView(self, didReceiveTouchEvent: event)
+    }
+}
+
+extension PentrekView: UIGestureRecognizerDelegate
+{
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool
+    {
+        // Prevents other gestures
+        return false
+    }
+    
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool
+    {
+        if let pan = gestureRecognizer as? UIPanGestureRecognizer
+        {
+            let velocity = pan.velocity(in: self)
+            // Restrict to horizontal swipes only
+            return abs(velocity.y) < abs(velocity.x)
+        }
+        return true
     }
 }
 
