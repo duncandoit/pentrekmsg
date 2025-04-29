@@ -9,54 +9,24 @@ import UIKit
 
 protocol PentrekViewDelegate: AnyObject
 {
-    func pentrekView(_ view: PentrekView, didReceiveTouchEvent event: PentrekTouchEvent)
+    func pentrekView(_ view: PentrekView, didReceiveTouchEvent touch: UITouch)
     func pentrekViewDidRequestSticker(_ view: PentrekView, image: UIImage)
 }
 
-func make_path(_ pts: [CGPoint]) -> CGPath {
-
-    func mid(_ a:CGPoint, _ b:CGPoint) -> CGPoint {
-        return CGPointMake((a.x + b.x) / 2,
-                           (a.y + b.y) / 2)
-    }
-
-    let w = 20.0;
-    let path = CGMutablePath()
-    let n = pts.count
-    if n == 0 {
-        return path
-    }
-
-    if n == 1 {
-        path.addEllipse(in:CGRect(origin:pts[0], size:CGSize(width:w, height:w)))
-    } else if n == 2 {
-        path.move(to: pts[0])
-        path.addLine(to: pts[1])
-    } else {
-        path.move(to: pts[0])
-        for i in 1...n-2 {
-            path.addQuadCurve(to: mid(pts[i], pts[i+1]), control: pts[i])
-        }
-        path.addQuadCurve(to: pts[n-1], control: pts[n-2])
-    }
-    return path
-
-}
 class PentrekView: UIView
 {
     let label = UILabel()
-    private let button = UIButton(type: .system)
     weak var viewDelegate: PentrekViewDelegate?
 
-    private var m_paths: [CGPath] = []
-    private var m_array: [CGPoint] = []
+    //private var paths: [CGPath] = []
+    private var points: [CGPoint] = []
 
-    override func draw(_ rect: CGRect) {
-        guard let ctx = UIGraphicsGetCurrentContext() else {
-            return
-        }
+#if true
+    override func draw(_ rect: CGRect)
+    {
+        guard let ctx = UIGraphicsGetCurrentContext() else { return }
 
-        let path = make_path(m_array)
+        let path = path(fromPoints: points)
         ctx.saveGState()
         ctx.setStrokeColor(CGColor(red:0, green:0, blue:1, alpha:1))
         ctx.addPath(path)
@@ -66,11 +36,12 @@ class PentrekView: UIView
         ctx.restoreGState()
 
     }
-    #if false
-    override func draw(_ layer: CALayer, in ctx: CGContext) {
+#else
+    override func draw(_ layer: CALayer, in ctx: CGContext)
+    {
 //        UIGraphicsPushContext(ctx);
 
-        let path = make_path(m_array)
+        let path = path(fromPoints: points)
         ctx.saveGState()
         ctx.setStrokeColor(CGColor(red:1, green:0, blue:0, alpha:1))
         ctx.addPath(path)
@@ -80,14 +51,11 @@ class PentrekView: UIView
 
 //        UIGraphicsPopContext()
     }
-    #endif
+#endif
 
     override func didMoveToSuperview()
     {
         backgroundColor = .systemGray6
-
-        setupLabel()
-        setupButton()
     }
     
     private func setupLabel()
@@ -99,25 +67,12 @@ class PentrekView: UIView
         addSubview(label)
 
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 20),
-            label.centerXAnchor.constraint(equalTo: centerXAnchor)
-        ])
-    }
-
-    private func setupButton()
-    {
-        button.setTitle("Send as Sticker", for: .normal)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.addTarget(self, action: #selector(handleRequestSticker), for: .touchUpInside)
-        addSubview(button)
-
-        NSLayoutConstraint.activate([
-            button.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            button.centerXAnchor.constraint(equalTo: centerXAnchor)
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
     
-    @objc private func handleRequestSticker()
+    @objc func handleRequestSticker()
     {
         let renderer = UIGraphicsImageRenderer(bounds: bounds)
         let image = renderer.image { ctx in
@@ -128,44 +83,77 @@ class PentrekView: UIView
     
     open override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?)
     {
-        let point = touches.first!.location(in: self)
-        handleTouch(.down(location: point))
-
-        m_array.removeAll();
-        m_array.append(point);
-        self.setNeedsDisplay()
+        handleTouch(touches.first)
     }
     
     open override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?)
     {
-        let point = touches.first!.location(in: self)
-        handleTouch(.moved(location: point))
-
-        m_array.append(point);
-        self.setNeedsDisplay()
+        handleTouch(touches.first)
     }
     
     open override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?)
     {
-        let point = touches.first!.location(in: self)
-        handleTouch(.up(location: point))
-
-        m_array.append(point);
-        self.setNeedsDisplay()
+        handleTouch(touches.first)
     }
     
     open override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?)
     {
-        let point = touches.first!.location(in: self)
-        handleTouch(.up(location: point))
-
-        m_array.removeAll();
+        handleTouch(touches.first)
     }
     
-    private func handleTouch(_ event: PentrekTouchEvent)
+    private func handleTouch(_ touch: UITouch?)
     {
+        guard let touch = touch else { return }
         guard let viewDelegate else { return }
-        viewDelegate.pentrekView(self, didReceiveTouchEvent: event)
+        
+        viewDelegate.pentrekView(self, didReceiveTouchEvent: touch)
+        
+        if touch.phase == .began
+        {
+            points.removeAll()
+        }
+        
+        points.append(touch.location(in: self))
+        self.setNeedsDisplay()
+    }
+    
+    func path(fromPoints pts: [CGPoint]) -> CGPath
+    {
+
+        func mid(_ a:CGPoint, _ b:CGPoint) -> CGPoint
+        {
+            return CGPointMake((a.x + b.x) / 2, (a.y + b.y) / 2)
+        }
+
+        let w = 20.0
+        let path = CGMutablePath()
+        let n = pts.count
+        
+        if n == 0
+        {
+            return path
+        }
+
+        if n == 1
+        {
+            path.addEllipse(in:CGRect(origin:pts[0], size:CGSize(width:w, height:w)))
+        }
+        else if n == 2
+        {
+            path.move(to: pts[0])
+            path.addLine(to: pts[1])
+        }
+        else
+        {
+            path.move(to: pts[0])
+            for i in 1...n-2
+            {
+                path.addQuadCurve(to: mid(pts[i], pts[i+1]), control: pts[i])
+            }
+            path.addQuadCurve(to: pts[n-1], control: pts[n-2])
+        }
+        
+        return path
     }
 }
 
@@ -189,11 +177,4 @@ extension PentrekView: UIGestureRecognizerDelegate
         }
         return true
     }
-}
-
-enum PentrekTouchEvent: Equatable
-{
-    case down(location: CGPoint)
-    case moved(location: CGPoint)
-    case up(location: CGPoint)
 }
