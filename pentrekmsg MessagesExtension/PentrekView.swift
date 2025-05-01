@@ -5,7 +5,35 @@
 //  Created by Zachary Duncan on 4/23/25.
 //
 
-import UIKit
+import SwiftUI
+
+struct ToolConfig
+{
+    enum ToolMode
+    {
+        case line, erase, smear
+    }
+    
+    enum ToolColor
+    {
+        case red, green, blue
+    }
+    
+    var mode: ToolMode = .line
+    var color: ToolColor = .blue
+    var strokeWidth: CGFloat = 20
+    var alpha: CGFloat = 1
+    
+    func cgColor() -> CGColor
+    {
+        return CGColor(
+            red: color == .red ? 1 : 0,
+            green:color == .green ? 1 : 0,
+            blue: color == .blue ? 1 : 0,
+            alpha: alpha
+        )
+    }
+}
 
 protocol PentrekViewDelegate: AnyObject
 {
@@ -15,11 +43,16 @@ protocol PentrekViewDelegate: AnyObject
 
 class PentrekView: UIView
 {
-    let label = UILabel()
     weak var viewDelegate: PentrekViewDelegate?
 
-    //private var paths: [CGPath] = []
+    private var toolConfig = ToolConfig()
     private var points: [CGPoint] = []
+    //private var paths: [CGPath] = []
+    
+    override func didMoveToSuperview()
+    {
+        backgroundColor = .systemGray6
+    }
 
 #if true
     override func draw(_ rect: CGRect)
@@ -28,13 +61,12 @@ class PentrekView: UIView
 
         let path = path(fromPoints: points)
         ctx.saveGState()
-        ctx.setStrokeColor(CGColor(red:0, green:0, blue:1, alpha:1))
+        ctx.setStrokeColor(toolConfig.cgColor())
         ctx.addPath(path)
-        ctx.setLineWidth(20)
+        ctx.setLineWidth(toolConfig.strokeWidth)
         ctx.setLineCap(CGLineCap.round)
         ctx.strokePath()
         ctx.restoreGState()
-
     }
 #else
     override func draw(_ layer: CALayer, in ctx: CGContext)
@@ -43,33 +75,61 @@ class PentrekView: UIView
 
         let path = path(fromPoints: points)
         ctx.saveGState()
-        ctx.setStrokeColor(CGColor(red:1, green:0, blue:0, alpha:1))
+        ctx.setStrokeColor(toolConfig.cgColor())
         ctx.addPath(path)
-        ctx.setLineWidth(20)
+        ctx.setLineWidth(toolConfig.strokeWidth)
         ctx.strokePath()
         ctx.restoreGState()
 
 //        UIGraphicsPopContext()
     }
 #endif
-
-    override func didMoveToSuperview()
+    
+    func path(fromPoints pts: [CGPoint]) -> CGPath
     {
-        backgroundColor = .systemGray6
+        func mid(_ a:CGPoint, _ b:CGPoint) -> CGPoint
+        {
+            return CGPointMake((a.x + b.x) / 2, (a.y + b.y) / 2)
+        }
+
+        let w = 20.0
+        let path = CGMutablePath()
+        let n = pts.count
+        
+        if n == 0
+        {
+            return path
+        }
+
+        if n == 1
+        {
+            path.addEllipse(in:CGRect(origin:pts[0], size:CGSize(width:w, height:w)))
+        }
+        else if n == 2
+        {
+            path.move(to: pts[0])
+            path.addLine(to: pts[1])
+        }
+        else
+        {
+            path.move(to: pts[0])
+            for i in 1...n-2
+            {
+                path.addQuadCurve(to: mid(pts[i], pts[i+1]), control: pts[i])
+            }
+            path.addQuadCurve(to: pts[n-1], control: pts[n-2])
+        }
+        
+        return path
     }
     
-    private func setupLabel()
+    func modifyConfig(_ changes: @escaping (inout ToolConfig) -> Void)
     {
-        label.text = "Touch Position"
-        label.textAlignment = .center
-        label.font = .systemFont(ofSize: 18, weight: .medium)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
+        DispatchQueue.main.async
+        {
+            changes(&self.toolConfig)
+            self.setNeedsDisplay()
+        }
     }
     
     @objc func handleRequestSticker()
@@ -115,45 +175,6 @@ class PentrekView: UIView
         
         points.append(touch.location(in: self))
         self.setNeedsDisplay()
-    }
-    
-    func path(fromPoints pts: [CGPoint]) -> CGPath
-    {
-
-        func mid(_ a:CGPoint, _ b:CGPoint) -> CGPoint
-        {
-            return CGPointMake((a.x + b.x) / 2, (a.y + b.y) / 2)
-        }
-
-        let w = 20.0
-        let path = CGMutablePath()
-        let n = pts.count
-        
-        if n == 0
-        {
-            return path
-        }
-
-        if n == 1
-        {
-            path.addEllipse(in:CGRect(origin:pts[0], size:CGSize(width:w, height:w)))
-        }
-        else if n == 2
-        {
-            path.move(to: pts[0])
-            path.addLine(to: pts[1])
-        }
-        else
-        {
-            path.move(to: pts[0])
-            for i in 1...n-2
-            {
-                path.addQuadCurve(to: mid(pts[i], pts[i+1]), control: pts[i])
-            }
-            path.addQuadCurve(to: pts[n-1], control: pts[n-2])
-        }
-        
-        return path
     }
 }
 
