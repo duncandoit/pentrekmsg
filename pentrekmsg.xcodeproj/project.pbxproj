@@ -82,9 +82,9 @@
 		C394482A2DB950D000EF13CB = {
 			isa = PBXGroup;
 			children = (
+				C394483E2DB950D100EF13CB /* Frameworks */,
 				C39448332DB950D000EF13CB /* pentrekmsg */,
 				C39448412DB950D100EF13CB /* pentrekmsg MessagesExtension */,
-				C394483E2DB950D100EF13CB /* Frameworks */,
 				C39448322DB950D000EF13CB /* Products */,
 			);
 			sourceTree = "<group>";

@@ -5,11 +5,13 @@
 //  Created by Zachary Duncan on 4/23/25.
 //
 
-import UIKit
+import SwiftUI
 import Messages
 
 class MessagesViewController: MSMessagesAppViewController
 {
+    var pentrekView = PentrekView()
+    
     override func viewDidLoad()
     {
         super.viewDidLoad()
@@ -27,12 +29,27 @@ class MessagesViewController: MSMessagesAppViewController
     
     private func presentTouchTrackingView()
     {
-        let controller = PentrekViewController()
-        controller.messagesDelegate = self
-        addChild(controller)
-        controller.view.frame = view.bounds
-        view.addSubview(controller.view)
-        controller.didMove(toParent: self)
+        let messageVM = PentrekMessageViewModel(pentrekView: pentrekView) { [weak self] image in
+            self?.sendSticker(from: image)
+        }
+        
+        let messageView = PentrekMessageView(viewModel: messageVM)
+        let messageController = UIHostingController(rootView: messageView)
+
+        addChild(messageController)
+        messageController.view.frame = view.bounds
+        view.addSubview(messageController.view)
+        
+        messageController.view.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            messageController.view.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            messageController.view.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            messageController.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            messageController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+        
+        messageController.didMove(toParent: self)
     }
     
     func sendSticker(from image: UIImage)

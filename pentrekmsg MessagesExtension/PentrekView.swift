@@ -7,20 +7,21 @@
 
 import SwiftUI
 
-struct ToolConfig
+/// State object that determines how the PentrekView draws
+struct ToolModel
 {
-    enum ToolMode
+    enum Mode
     {
         case line, erase, smear
     }
     
-    enum ToolColor
+    enum Color
     {
         case red, green, blue
     }
     
-    var mode: ToolMode = .line
-    var color: ToolColor = .blue
+    var mode: ToolModel.Mode = .line
+    var color: ToolModel.Color = .blue
     var strokeWidth: CGFloat = 20
     var alpha: CGFloat = 1
     
@@ -41,11 +42,12 @@ protocol PentrekViewDelegate: AnyObject
     func pentrekViewDidRequestSticker(_ view: PentrekView, image: UIImage)
 }
 
+/// Main canvas object for drawing
 class PentrekView: UIView
 {
     weak var viewDelegate: PentrekViewDelegate?
 
-    private var toolConfig = ToolConfig()
+    private var toolModel = ToolModel()
     private var points: [CGPoint] = []
     //private var paths: [CGPath] = []
     
@@ -61,9 +63,9 @@ class PentrekView: UIView
 
         let path = path(fromPoints: points)
         ctx.saveGState()
-        ctx.setStrokeColor(toolConfig.cgColor())
+        ctx.setStrokeColor(toolModel.cgColor())
         ctx.addPath(path)
-        ctx.setLineWidth(toolConfig.strokeWidth)
+        ctx.setLineWidth(toolModel.strokeWidth)
         ctx.setLineCap(CGLineCap.round)
         ctx.strokePath()
         ctx.restoreGState()
@@ -123,11 +125,11 @@ class PentrekView: UIView
         return path
     }
     
-    func modifyConfig(_ changes: @escaping (inout ToolConfig) -> Void)
+    func updateTool(_ changes: @escaping (inout ToolModel) -> Void)
     {
         DispatchQueue.main.async
         {
-            changes(&self.toolConfig)
+            changes(&self.toolModel)
             self.setNeedsDisplay()
         }
     }
@@ -164,10 +166,6 @@ class PentrekView: UIView
     private func handleTouch(_ touch: UITouch?)
     {
         guard let touch = touch else { return }
-        guard let viewDelegate else { return }
-        
-        viewDelegate.pentrekView(self, didReceiveTouchEvent: touch)
-        
         if touch.phase == .began
         {
             points.removeAll()
@@ -175,6 +173,9 @@ class PentrekView: UIView
         
         points.append(touch.location(in: self))
         self.setNeedsDisplay()
+        
+        guard let viewDelegate else { return }
+        viewDelegate.pentrekView(self, didReceiveTouchEvent: touch)
     }
 }
 
@@ -197,5 +198,31 @@ extension PentrekView: UIGestureRecognizerDelegate
             return abs(velocity.y) < abs(velocity.x)
         }
         return true
+    }
+}
+
+/// Wrapper object for displaying PentrekView in SwiftUI
+struct PentrekViewRepresentable: UIViewRepresentable
+{
+    weak var pentrekView: PentrekView?
+    weak var viewDelegate: PentrekViewDelegate?
+    
+    init(pentrekView: PentrekView) {
+        self.pentrekView = pentrekView
+    }
+    
+    func makeCoordinator() -> Coordinator
+    {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> PentrekView
+    {
+        let view = pentrekView ?? PentrekView()
+        return view
+    }
+
+    func updateUIView(_ uiView: PentrekView, context: Context)
+    {
     }
 }
